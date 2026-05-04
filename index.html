@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>洗外牆事件紀錄</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --accent: #0071e3;
+    --border: #e5e5ea;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.85;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 36px 20px 80px;
+  }
+
+  header.page-head {
+    text-align: center;
+    margin-bottom: 44px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+
+  .intro {
+    color: var(--muted);
+    font-size: 17px;
+  }
+
+  .phase {
+    margin-bottom: 48px;
+  }
+
+  .phase-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 14px 18px;
+    background: linear-gradient(90deg, rgba(0,113,227,0.08), transparent);
+    border-left: 4px solid var(--accent);
+    margin-bottom: 22px;
+    border-radius: 4px;
+  }
+
+  .event {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .event-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .event-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .event-time {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .event-images {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .event-images.single {
+    grid-template-columns: 1fr;
+  }
+
+  .event-images img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: zoom-in;
+    transition: transform 0.15s;
+    display: block;
+  }
+
+  .event-images img:hover {
+    transform: scale(1.005);
+  }
+
+  .event-desc {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.93);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    cursor: zoom-out;
+    padding: 20px;
+  }
+
+  .lightbox.active { display: flex; }
+
+  .lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    color: white;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 22px 14px 60px; }
+    h1 { font-size: 26px; }
+    .intro { font-size: 16px; }
+    .phase-title { font-size: 19px; padding: 12px 14px; }
+    .event { padding: 18px; }
+    .event-desc { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header class="page-head">
+    <h1>洗外牆事件紀錄</h1>
+    <p class="intro">透過 LINE 對話紀錄，依時序還原事件來龍去脈</p>
+  </header>
+  <div id="timeline"></div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" aria-label="關閉">×</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+// ===== 資料區：要新增/修改說明，只要改下面這個陣列 =====
+const data = [
+  {
+    phase: "區權會表決洗外牆前-2024",
+    events: [
+      {
+        images: ["LINE_NOTE_260504_1.jpg"],
+        time: "",
+        description: `這是區權會討論洗外牆前，前經理跟我們的對話，根據當時前經理文字描述，也很清楚看出是寫"正面"。
+
+面的意思，是一整面，前經理一直這樣跟我們傳達，直到實際洗了後才發現，原來廠商認知與前經理說法，截然不同。
+
+當時有參與區權會的人，應該也可以很清楚感受到前經理表達的是"面"，所以區權會當時也沒人質疑，我們當時所有委員也跟大家一樣，一直以為是洗整"面"。
+
+另外，這階段同步補充一個重要資訊。
+
+洗外牆原本有多間廠商估價，最後會選擇這間原因很簡單，就是我們提出的要求裡面價格最低，我印象中誤差近10~15萬左右。
+
+目前回頭看來這10~15萬誤差，大概就是文字敘述描述上的認知差異，報價比較貴的廠商確實是整面洗，而非只洗頂樓抿石子侧裙。`
+      },
+      {
+        images: ["LINE_NOTE_260504_2.jpg"],
+        time: "",
+        description: `洗外牆這件事總共歷經三屆，2024~2026。
+
+2024我也是委員之一，但非主委，洗外牆一直以來是我主張及推動沒錯，但我還是要尊重其它委員及委員會運作流程，公開找廠商，大家一起討論及決定。
+
+所以這件事是我主推，但是委員會大家一起討論及決定，這是我們這幾屆以來一路運作模式，也是正常委員會該有的運作模式，沒有誰主導什麼事誰說了算，一切都是整個委員會大家一起決定。
+
+截圖是2024年12月左右，區權會已經表決通過，當時我即將卸任委員，卸任之前我針對自己比較清楚及重視的防水塗料問題，特別交代釐清。
+
+也就是說洗外牆這件事，我雖然是主推，但實際委員會大家都不懂相關工程，大家都有各自事業要忙，所有工程委員根本沒必要也沒責任清楚施工細節，委員會工作只是決策端，理解施工細節等是經理責任，委員會工作只是根據經理彙整的資訊做決策。
+
+然而，雖然工程上委員會沒必要理解施做細節，但針對自己稍微比較理解擅長領域，自然會多詢問提醒一下，這張截圖呈現的即是我剛好對防水塗料比較懂，自然就會重視多點詢問，其餘的怎樣施工流程我們根本不清楚，一切都是讓經理彙整回報，而我們做決策，僅此而已。
+
+決策端(委員會)與執行端(物業)，本來就該分清楚界線，委員會成員不是工人不是執行者，剛好遇到懂的領域是剛好加分而已，但並非必要。`
+      }
+    ]
+  },
+  {
+    phase: "區權會表決洗外牆後-2025",
+    events: [
+      {
+        images: [],
+        time: "",
+        description: `2025年我卸任委員會，但久久都會問一下進度。
+
+2024年區權會表決完洗外牆，正常而言2025年就會施做。
+
+可是2025下了一整年的雨﹐加上前經理估計拖延症+懶癌發作，一直跟廠商時間喬不妥，所以遲遲沒有動工。
+
+2025一直下雨確實是很大變數，但老實說中間有許多空檔還是可以施工，所以這邊我個人認為2025沒施工跟前經理關係也很大，而此也是新委員會上任沒多久，我就與前經理起衝突把他換掉原因之一。
+
+這段沒啥太重要的，大概就是簡單讓大家知道為何拖了一年沒施工原因，以及稍微點出前經理一些問題。`
+      }
+    ]
+  },
+  {
+    phase: "外牆清洗前夕經理與我起衝突-2026",
+    events: [
+      {
+        images: ["658640.jpg"],
+        time: "",
+        description: `外牆清洗前夕發生一件事，就是社區洗水塔的事情，物業那邊各種雙方推卸責任說法，從上一屆一拖再拖到本屆，這件事我一路追蹤至少3個月以上，上任後第一件事就是告知經理洗水塔事情不能再拖，那是所有住戶要喝的水，每拖下去都是危害住戶健康!!
+
+洗水塔前夕，我才發現經理還在拖延及跟公司互推責任(物業贈送水塔清洗問題，督導與經理兩邊各說各話)，當時我在騎摩托車非常生氣，因此告知前經理不要再拖，同時要求他寫工作日誌，好讓我清楚他每天完成什麼事，什麼事還沒完成。
+
+外出回來後我回到社區，我原本還面帶微笑要跟經理好好溝通社區的事，哪知他自己沒做好卻發神經，跟我說他準備寫交接，覺得我們兩個不合。
+
+以上，就是前經理在洗外牆前突然被換掉原因，不是我主動趕他走，而是他表現讓我覺得他是智障，自己做不好還在那跟我鬧脾氣，我無法跟智障對話，請公司趕快如他所願交接換新經理。
+
+這邊再補充一個資訊，洗外牆這件事2024年區權會時就已經決定了廠商跟施工範圍。
+
+2025我沒當委員當時委員會也沒有任何異動。
+
+2026我接手委員會時，只是依照前面已經決定好的程序進行。`
+      }
+    ]
+  },
+  {
+    phase: "外牆清洗後第3天深夜1",
+    events: [
+      {
+        images: ["LINE_NOTE_260504_3.jpg"],
+        time: "",
+        description: `前面提到，本屆開始接手外牆清理只是跑前面兩屆已經決定好的程序，前面一兩天清洗我都有在看，隱約覺得很多地方沒洗，但清洗還沒結束就持續觀察。
+
+直到清洗第三天開始，新經理打電話來說廠商洗好了請我驗收，我眼看著清洗後的結果警覺大是不妙!! 跟前經理一路來告知我們的"清洗範圍"完全不同!! 可是廠商卻斬釘截鐵的告訴我，他們就是照合約走 !!!
+
+因此清洗完的當天晚上我非常忙碌，我一直看著之前的合約不斷的思考，究竟哪邊出問題? 究竟哪邊產生這種認知誤差?  我們究竟還有什麼武器(論述)，可以去推翻廠商請他清洗更多?
+
+仔細翻當初合約內容，我發現了關鍵字....頂樓抿石子侧裙+"下面使用水柱沖洗"!!!
+
+2024年我們一再交代前經理，有洗抿石側裙下方一整面用水柱沖洗即可，側裙才需要上防水漆。經理告知我們是這樣處理，合約上也是如此寫.....
+
+我發現認知差異如此大，翻合約去反覆推敲後才發現......問題就出在"下面"兩字。
+
+前經理跟委員會所告知的下面，就是側裙下面一整面牆都用水柱沖洗，但廠商所認知及處理的下面，是指側裙抿石"下面"那一小範圍.......
+
+也就是說，一直以來廠商認知的"下面"(範圍極小)，跟前經理一路跟委員及區權會時傳達的"下面"(範圍極大)，是兩件完全不同的事!!
+
+截圖就是我跟社區另一位委員，告知我發現廠商與委員會，認知差異如此大的原因，一切根源就在前經理。`
+      }
+    ]
+  },
+  {
+    phase: "外牆清洗後第3天深夜2",
+    events: [
+      {
+        images: ["LINE_NOTE_260504_8.jpg", "LINE_NOTE_260504_7.jpg"],
+        time: "",
+        description: `上一段我說明了這次外牆清洗，一切問題根源在於前經理，委員會決策端該盡的責任都盡了，前經理執行端給予我們錯誤資訊及誤導，這種事情委員會根本難防也無法防，因為估計前經理自己也一直誤解廠商藝思，否則不會讓委員及所有住戶，都誤以為整面都會清理。
+
+可是問題發生了抱怨也無濟於事，當天我腦海裡只想著....怎樣盡量讓這件事情，可以更完善收場。
+
+因此我反覆盯著合約看，發現一件有趣的事....廠商合約上寫125噸，剛好我當時新家也找了幾次吊車也洗過外牆，我印象中洗外牆廠商普遍用的是45噸吊車，125噸超大是特殊規格，我看當時廠商叫的吊車估計只有45噸，而非125噸，這樣一來一往三天吊車成本，誤差估計5~10萬!!
+
+而這5~10萬，就是我可以合理跟廠商凹更多清理的空間!!
+
+所以洗外牆第三天結束時，我先假裝問廠商他們吊車是叫幾噸的，我看見廠商回答45噸以後，就確定合約上廠商寫的125噸，是我可以跟他們談判的空間!!
+
+同時，我也要求經理，請廠商攤開價格細項給委員會，釐清整個收費。
+
+那個夜晚，我從下午看廠商清洗完發現認知誤差太大，私下不斷的問各方相關工程人員，也跟委員們思考及討論對策。
+
+老實說廠商就照合約走，可以跟廠商談判空間極少，我們這邊唯一武器只有廠商原本是報125噸吊車價格，實際卻只用45噸。`
+      }
+    ]
+  },
+  {
+    phase: "與廠商第一次談判",
+    events: [
+      {
+        images: ["LINE_NOTE_260504_9.jpg"],
+        time: "",
+        description: `前面提到，我請經理跟廠商要細項報價。
+
+後來隔天下午，廠商打電話給我，跟我告知他們就照合約走，細項報價....吊車成本、師傅成本、人員成本等，屬於他們自己行業的商業機密，他們不會給這些。
+
+我不斷的強調現在認知差異太大，洗成這樣我很難對住戶交代，但廠商立場依然很硬，甚至後續老闆跟我談的過程非常氣憤，他們認為自己就是照合約走，怎我們這邊反而提出不合理要求?!
+
+後來當天下午，廠商很緊急的約我初步交涉，我們初步交涉是不歡而散，我感覺得出廠商立場非常硬且不願妥協，我只好很委屈地跟它告知委員會成員都覺得不合理，我也無法跟住戶交代，讓廠商知道這件事情不是我一人可以決定，我得跟大家討論才能決定。
+
+老實說就算我這樣說，廠商還是很硬，直到我不斷提到125噸變成45噸的價差時，廠商才比較軟化自知理虧，跟我告知他們回去再好好討論一下，思考讓兩方都比較圓滿方式。`
+      }
+    ]
+  },
+  {
+    phase: "與廠商第二次談判",
+    events: [
+      {
+        images: ["LINE_NOTE_260504_5.jpg"],
+        time: "",
+        description: `第一次談判不歡而散，而我也明確告知自己雖然是主委，但要尊重其他委員及住戶感受，無法作主。
+
+隔一天後我又跟廠商繼續討價還價，廠商突然告知他們下午幾點左右有空，不然把幾個委員約出來大家一起談。
+
+我接收到訊息後，馬不停蹄的與兩位委員約時間，兩位委員原本也都在上班中，一聽到這重大事情馬上趕回來，最終我們敲定時間，三位委員與廠商兩位代表在會議是談判。
+
+老實說一開始談判過程並不順遂，我是個理性就事論事的人，就只想針對那合約上125噸變成45噸的價格誤差，要廠商退個5~10萬來，這樣我會覺得比較合理好交代。
+
+可是談判交涉過程，我發現廠商主要代表是工程人員出生，他非常氣憤前經理對雙方造成的困擾，態度也踩得非常硬不太願意讓步。
+
+我馬上反應過來自己就事論事談判方式不利，這類人需要跟他東扯西扯些無關緊要的，多點情感交流才比較好溝通，因此我跟另一位委員漸漸閉嘴不說話，交由另一位也是工程出生的委員跟廠商溝通。
+
+雖然後續廠商一直避重就輕不講到125噸變成45噸的補償，但我已經感覺到廠商的逐漸軟化與退步，因此後面交涉就變成不退錢可以，但要多補那些工程多清潔哪處，過程中另一位委員也不斷把住戶反映覺得髒的地方要求廠商補上。
+
+最後，不斷討價還價，廠商願意補洗比原本清潔面積多出一倍左右的範圍，而我評估那些範圍補洗以後，至少讓社區遠看外觀跟過去截然不同，因此也選擇讓步，不再追究125噸變成45噸的事。
+
+對我而言，這件事無論廠商或委員會都是受害者，真正問題根源在前經理，但前經理人已經不在了，責任也難以追究，因此讓眼前這件事能圓滿收場才是首要之務，所以我們雙方各退一步達成協議。`
+      }
+    ]
+  },
+  {
+    phase: "後續雜項紀錄",
+    events: [
+      {
+        images: ["LINE_NOTE_260504_10.jpg"],
+        time: "",
+        description: `廠商後續補洗範圍非常大，可是我們為了讓社區清洗更能達到當初目標，因此有跟廠商繼續談加洗部分。
+
+基本上後續加洗談判，我們是抓著廠商也知道我們難處及理虧，主動把加洗價格壓到最低讓我們好對住戶交代。
+
+所以後續我們不但沒有要求退錢，反而要求大範圍的加洗並告知願意付錢。
+
+廠商也知道了我們誠意，知道我們非刻意刁難，因此也變得比較好溝通，經由經理的協調不但把價格壓低，經理更凹了廠商好幾處順手清洗，包含一樓花圃的青苔等.....`
+      },
+      {
+        images: ["LINE_NOTE_260504_11.jpg"],
+        time: "",
+        description: `目前經理在本次談判雖然發揮不了作用，但充分發揮了後續議價能力，原本廠商跟我們說好價格經由經理議價後一砍再砍，我印象中經理實際砍價不只有我LINE截圖這部分，實際經理幫社區大概省了5~10萬左右。
+
+我聽了心情大好，直接再委員會提議經理幫我們省那麼多，是不是該發個紅包給經理當獎勵。
+
+最後，我們想不出合理名目給經理這項費用，因此我自掏腰包，拿出一千元獎勵金給經理。
+
+這種事情，老實說根本不太值得拿出來說嘴，但會拿出來說自然有原因，後續我再娓娓道來。`
+      }
+    ]
+  },
+  {
+    phase: "結語 — 寫給那些只會馬後炮與造謠的住戶",
+    events: [
+      {
+        images: [],
+        time: "",
+        description: `這次外牆清洗，許多住戶其實並不了解前因後果。甚至有人只因為自家牆面沒被清洗到，就開始指責委員會「亂花錢」、「黑箱作業」。
+
+我必須講清楚一件事：
+
+如果你對社區事務有意見——無論是清洗範圍、施工細節或經費使用——委員會的會議始終公開，社區群組也隨時開放討論。為什麼不在事前提出？為什麼不在過程中參與？卻選擇等事情結束後，躲在背後馬後炮、造謠？
+
+每一位委員，都是盡心盡力處理這件事。沒有任何一個人在過程中想過「我家有沒有被洗到」，也從未要求廠商針對自家牆面特別加強。我們唯一在乎的，就是把這件原本一團糟的爛事，用最小的成本收得圓滿。
+
+回想 2024 年區權會時，我們就已經明確告知所有住戶——若要全社區外牆通通清洗，價格至少會是目前的 1.5～2 倍以上。正是基於成本考量，委員會才選擇只清洗重點區域，至少讓社區從遠處看，不再像一座長滿青苔的鬼屋。
+
+目前結果，是本屆委員會在前任經理留下的混亂中，硬是收拾出來的成績。我們每個人都認為，自己做了一件值得驕傲的事；卻沒想到，反而成了某些人茶餘飯後的話題。
+
+我必須再強調一次：
+
+所有委員，沒有人在乎過自家是否清洗到。
+沒有人向廠商指定加強自家位置。
+沒有人從廠商那裡拿過任何一毛回扣或好處。
+為了讓廠商心情好、多凹一點清洗範圍，請廠商喝飲料的錢，是我自掏腰包。
+發給經理的議價獎勵金，也是我自掏腰包。
+
+所有委員在這件事情上一分一毫沒拿，只有付出。
+
+那麼我想請那些只因自家沒被清洗到就心懷不滿、只會在背後馬後炮、甚至無中生有造謠中傷的人，捫心自問：
+
+你們，這樣對嗎？`
+      }
+    ]
+  }
+];
+// ===== 資料區結束 =====
+
+const timeline = document.getElementById('timeline');
+let counter = 0;
+
+data.forEach(phase => {
+  const phaseEl = document.createElement('section');
+  phaseEl.className = 'phase';
+
+  const titleEl = document.createElement('h2');
+  titleEl.className = 'phase-title';
+  titleEl.textContent = phase.phase;
+  phaseEl.appendChild(titleEl);
+
+  phase.events.forEach(ev => {
+    counter++;
+    const evEl = document.createElement('article');
+    evEl.className = 'event';
+
+    const header = document.createElement('div');
+    header.className = 'event-header';
+    const num = document.createElement('span');
+    num.className = 'event-num';
+    num.textContent = counter;
+    header.appendChild(num);
+    if (ev.time) {
+      const t = document.createElement('span');
+      t.className = 'event-time';
+      t.textContent = ev.time;
+      header.appendChild(t);
+    }
+
+    const imagesEl = document.createElement('div');
+    imagesEl.className = 'event-images' + (ev.images.length === 1 ? ' single' : '');
+    ev.images.forEach(src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.loading = 'lazy';
+      img.dataset.full = src;
+      imagesEl.appendChild(img);
+    });
+
+    const descEl = document.createElement('div');
+    descEl.className = 'event-desc';
+    descEl.textContent = ev.description;
+
+    evEl.appendChild(header);
+    evEl.appendChild(imagesEl);
+    evEl.appendChild(descEl);
+    phaseEl.appendChild(evEl);
+  });
+
+  timeline.appendChild(phaseEl);
+});
+
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+document.querySelectorAll('.event-images img').forEach(img => {
+  img.addEventListener('click', () => {
+    lightboxImg.src = img.dataset.full;
+    lightbox.classList.add('active');
+  });
+});
+lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') lightbox.classList.remove('active');
+});
+</script>
+</body>
+</html>
